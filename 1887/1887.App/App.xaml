@@ -17,6 +17,8 @@
         </Style>
         
         <local:LocalizedStrings xmlns:local="clr-namespace:_1887.App" x:Key="LocalizedStrings"/>
+        
+        
     </Application.Resources>
 
     <Application.ApplicationLifetimeObjects>

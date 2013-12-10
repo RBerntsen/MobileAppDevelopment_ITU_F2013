@@ -76,6 +76,8 @@ namespace _1887.App
                 PhoneApplicationService.Current.UserIdleDetectionMode = IdleDetectionMode.Disabled;
             }
 
+            _1887.Backend.Utilities.MemoryUsage.BeginRecording();
+
         }
 
         // Code to execute when the application is launching (eg, from Start)

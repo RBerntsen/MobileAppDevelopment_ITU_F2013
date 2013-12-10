@@ -6,6 +6,7 @@
     xmlns:shell="clr-namespace:Microsoft.Phone.Shell;assembly=Microsoft.Phone"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:toolkit="clr-namespace:Microsoft.Phone.Controls;assembly=Microsoft.Phone.Controls.Toolkit"
     mc:Ignorable="d"
     FontFamily="{StaticResource PhoneFontFamilyNormal}"
     FontSize="{StaticResource PhoneFontSizeNormal}"
@@ -13,9 +14,14 @@
     SupportedOrientations="PortraitOrLandscape" Orientation="Portrait"
     shell:SystemTray.IsVisible="False">
 
+    <phone:PhoneApplicationPage.Resources>
+        <Style x:Key="FontColor" TargetType="HyperlinkButton">
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+    </phone:PhoneApplicationPage.Resources>
+
     <!--LayoutRoot is the root grid where all page content is placed-->
     <Grid x:Name="LayoutRoot" Background="Transparent">
-
         <!-- LOCALIZATION NOTE:
             To localize the displayed strings copy their values to appropriately named
             keys in the app's neutral language resource file (AppResources.resx) then
@@ -35,26 +41,76 @@
             CurrentUICulture of the app at run time.
          -->
 
-         <!--Panorama control-->
-        <phone:Panorama Title="1887">
+        <!--Panorama control-->
+        <phone:Panorama Title="1887" x:Name="panoramaContainer">
             <phone:Panorama.Background>
-                <ImageBrush ImageSource="Assets/obbg1.jpg"/>
+                <ImageBrush x:Name="ibBackground" />
             </phone:Panorama.Background>
 
             <!--Panorama item one-->
-            <phone:PanoramaItem Header="ODENSE">
+            <phone:PanoramaItem Header="ODENSE" x:Name="piHome">
                 <!--Single line list with text wrapping-->
-                <phone:LongListSelector Margin="0,0,-22,0" ItemsSource="{Binding Items}">
+                <StackPanel Margin="15,-30,0,0">
+                    <TextBlock Text="NYHEDER" FontWeight="Bold" />
+                    <phone:LongListSelector ItemsSource="{Binding NewsItems}" Loaded="LongListSelector_Loaded">
+                        <phone:LongListSelector.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="-10,0,0,0">
+                                    <HyperlinkButton Content="{Binding SourceDateString, StringFormat=d}" HorizontalAlignment="Left" NavigateUri="{Binding Url}" TargetName="_blank" ToolTipService.ToolTip="{Binding Title}" FontSize="10" Style="{StaticResource FontColor}" />
+                                    <HyperlinkButton MouseLeftButtonUp="hlb_InternalBrowser_OnUp" Content="{Binding Title}" HorizontalAlignment="Left" NavigateUri="{Binding InternalBrowserUrl}" ToolTipService.ToolTip="{Binding Title}" Margin="0,-5,0,5" Style="{StaticResource FontColor}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </phone:LongListSelector.ItemTemplate>
+                    </phone:LongListSelector>
+                    <TextBlock Text="KAMPE" FontWeight="Bold" />
+                    <phone:LongListSelector ItemsSource="{Binding MatchItems}">
+                        <phone:LongListSelector.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding AgainstText}"></TextBlock>
+                                </StackPanel>
+                            </DataTemplate>
+                        </phone:LongListSelector.ItemTemplate>
+                    </phone:LongListSelector>
+                    <TextBlock Text="TABEL" FontWeight="Bold" Margin="0,10,0,0" />
+                    <StackPanel x:Name="spMyClubLeagueStanding">
+                        <TextBlock Text="{Binding presentationViewSimple}" />
+                    </StackPanel>
+                </StackPanel>
+            </phone:PanoramaItem>
+
+            <!--Panorama item two-->
+            <phone:PanoramaItem Header="NEWS">
+                <!--Single line list with text wrapping-->
+                <phone:LongListSelector Margin="15,-30,0,0" ItemsSource="{Binding NewsItemsLongList}">
                     <phone:LongListSelector.ItemTemplate>
                         <DataTemplate>
-                            <StackPanel Margin="0,-6,0,12">
-                                <HyperlinkButton Content="{Binding Date}" HorizontalAlignment="Left" NavigateUri="{Binding Url}" TargetName="_blank" ToolTipService.ToolTip="{Binding Title}" FontSize="8"/>
-                                <HyperlinkButton Content="{Binding Title}" HorizontalAlignment="Left" NavigateUri="{Binding Url}" TargetName="_blank" ToolTipService.ToolTip="{Binding Title}" />
+                            <StackPanel Margin="-10,0,0,0">
+                                <HyperlinkButton Content="{Binding SourceDateString, StringFormat=d}" HorizontalAlignment="Left" NavigateUri="{Binding Url}" TargetName="_blank" ToolTipService.ToolTip="{Binding Title}" FontSize="10" Style="{StaticResource FontColor}" />
+                                <HyperlinkButton MouseLeftButtonUp="hlb_InternalBrowser_OnUp" Content="{Binding Title}" HorizontalAlignment="Left" NavigateUri="{Binding InternalBrowserUrl}" ToolTipService.ToolTip="{Binding Title}" Margin="0,-5,0,10" Style="{StaticResource FontColor}" />
                             </StackPanel>
                         </DataTemplate>
                     </phone:LongListSelector.ItemTemplate>
                 </phone:LongListSelector>
             </phone:PanoramaItem>
+
+            <phone:PanoramaItem Header="MATCHES">
+                <!--Single line list with text wrapping-->
+                <phone:LongListSelector Margin="15,-30,0,0" ItemsSource="{Binding MatchItemsLongList}">
+                    <phone:LongListSelector.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel>
+                                <TextBlock Text="{Binding AgainstText}"></TextBlock>
+                            </StackPanel>
+                        </DataTemplate>
+                    </phone:LongListSelector.ItemTemplate>
+                </phone:LongListSelector>
+            </phone:PanoramaItem>
+
+            <phone:PanoramaItem Header="LEAGUE TABLE">
+                <Grid x:Name="gridLeagueTable" Width="418" HorizontalAlignment="Left"  VerticalAlignment="Top" Margin="15,-30,0,0" />
+            </phone:PanoramaItem>
+            
         </phone:Panorama>
 
         <!--Uncomment to see an alignment grid to help ensure your controls are
@@ -63,6 +119,21 @@
             if the System Tray is hidden.
 
             Before shipping remove this XAML and the image itself.-->
-        <Image Source="/Assets/AlignmentGrid.png" VerticalAlignment="Top" Height="800" Width="480" Margin="0" Grid.Row="0" Grid.RowSpan="2" IsHitTestVisible="False" />
+        <!--<ProgressBar Width="480" Height="50" Margin="0" Cursor="SizeWE" Canvas.ZIndex="4" Visibility="Visible" x:Name="pbLoader" IsHitTestVisible="False" />-->
+        <ProgressBar x:Name="customIndeterminateProgressBar" IsIndeterminate="true" />
+        <Image Canvas.ZIndex="3" Visibility="Visible" x:Name="imgDataLoad" Source="/Assets/background.png" VerticalAlignment="Top" Height="800" Width="480" Margin="0" Grid.Row="0" Grid.RowSpan="2" />
+        <TextBlock Visibility="Visible" Canvas.ZIndex="3" x:Name="tbDataLoad" HorizontalAlignment="Left" Margin="10,382,0,0" TextWrapping="Wrap" Text="Loading data..." VerticalAlignment="Top" TextAlignment="Center" Width="470" IsHitTestVisible="False"/>
+        <!--<Image Source="/Assets/AlignmentGrid.png" VerticalAlignment="Top" Height="800" Width="480" Margin="0" Grid.Row="0" Grid.RowSpan="2" IsHitTestVisible="False" />-->
+
     </Grid>
+    <phone:PhoneApplicationPage.ApplicationBar>
+        <shell:ApplicationBar IsVisible="True" Mode="Minimized" IsMenuEnabled="True">
+            <shell:ApplicationBarIconButton IconUri="/Assets/Icons/refresh.png" Click="abibRefresh_Click" Text="Refresh"/>
+            <shell:ApplicationBarIconButton IconUri="/Assets/Icons/like.png" Click="abibHome_Click" Text="Home"/>
+            <shell:ApplicationBar.MenuItems>
+                <shell:ApplicationBarMenuItem Text="Settings" Click="abmiSettings_Click"/>
+                <shell:ApplicationBarMenuItem Text="About" Click="abmiAbout_Click"/>
+            </shell:ApplicationBar.MenuItems>
+        </shell:ApplicationBar>
+    </phone:PhoneApplicationPage.ApplicationBar>
 </phone:PhoneApplicationPage>

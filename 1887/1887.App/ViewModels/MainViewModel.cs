@@ -2,6 +2,13 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using _1887.App.Resources;
+using System.Diagnostics;
+using System.Threading.Tasks;
+using _1887.Backend.Model;
+using System.Collections.Generic;
+using System.Linq;
+using _1887.Backend.Settings;
+using _1887.Backend.Constants;
 
 namespace _1887.App.ViewModels
 {
@@ -9,20 +16,32 @@ namespace _1887.App.ViewModels
     {
         public MainViewModel()
         {
-            this.Items = new ObservableCollection<NewsArticleViewItem>();
+            this.NewsItems = new ObservableCollection<NewsArticleItem>();
+            this.NewsItemsLongList = new ObservableCollection<NewsArticleItem>();
+            this.LeagueTableItems = new ObservableCollection<LeagueTableItem>();
+            this.MatchItemsLongList = new ObservableCollection<MatchItem>();
+            this.MatchItems = new ObservableCollection<MatchItem>();
         }
 
         /// <summary>
         /// A collection for ItemViewModel objects.
         /// </summary>
-        public ObservableCollection<NewsArticleViewItem> Items { get; private set; }
+        public ObservableCollection<NewsArticleItem> NewsItems { get; private set; }
+        public ObservableCollection<NewsArticleItem> NewsItemsLongList { get; private set; }
+        public ObservableCollection<LeagueTableItem> LeagueTableItems { get; private set; }
+        public ObservableCollection<MatchItem> MatchItemsLongList { get; private set; }
+        public ObservableCollection<MatchItem> MatchItems { get; private set; }
 
-        private string _sampleProperty = "Sample Runtime Property Value";
+        static readonly IsolatedStorageProperty<bool> settingUseProperNames = new IsolatedStorageProperty<bool>(LocalSettings.settingUseProperNames, false);
+        static readonly IsolatedStorageProperty<int> settingNewsToShowList = new IsolatedStorageProperty<int>(LocalSettings.settingNewsToShowList, 3);
+
+
+        private bool _sampleProperty = false;
         /// <summary>
         /// Sample ViewModel property; this property is used in the view to display its value using a Binding
         /// </summary>
         /// <returns></returns>
-        public string SampleProperty
+        public bool IsLoadingData
         {
             get
             {
@@ -33,7 +52,7 @@ namespace _1887.App.ViewModels
                 if (value != _sampleProperty)
                 {
                     _sampleProperty = value;
-                    NotifyPropertyChanged("SampleProperty");
+                    NotifyPropertyChanged("isLoadingData");
                 }
             }
         }
@@ -56,23 +75,39 @@ namespace _1887.App.ViewModels
         }
 
         /// <summary>
-        /// Creates and adds a few ItemViewModel objects into the Items collection.
+        /// Gets data from webscraper and binds to ObservableCollections
         /// </summary>
-        public void LoadData()
+        public async void LoadData()
         {
-            // Sample data; replace with real data
-            //this.Items.Add(new ItemViewModel() { LineOne = "runtime one", LineTwo = "Maecenas praesent accumsan bibendum", LineThree = "Facilisi faucibus habitant inceptos interdum lobortis nascetur pharetra placerat pulvinar sagittis senectus sociosqu" });
+            this.IsLoadingData = true;
 
-            //Create test items
-            NewsArticleViewItem article = new NewsArticleViewItem("Jesper C på kassen", "http://www.ob.dk", new DateTime(1887, 07, 18), 111111);
-            NewsArticleViewItem article2 = new NewsArticleViewItem("Mads Toppel græder", "http://www.bold.dk", new DateTime(1887, 07, 18), 222222);
-            NewsArticleViewItem article3 = new NewsArticleViewItem("Rasmus Falk klar igen", "http://www.1887.dk", new DateTime(1887, 07, 18), 333333);
+            //Scrape news from bold.dk
+            _1887.Backend.WebScraper.WebScraper wsMatchItems = new Backend.WebScraper.WebScraper();
+            Task<List<MatchItem>> resultCallMatchItems = wsMatchItems.ScrapeBoldSuperligaMatchSchedule("www.bold.dk/fodbold/danmark/superligaen/ob/program", settingUseProperNames.Value);
+            List<MatchItem> resultMatchItems = await resultCallMatchItems;
 
-            this.Items.Add(article);
-            this.Items.Add(article2);
-            this.Items.Add(article3);
+            //Scrape news from holdnyt.dk
+            _1887.Backend.WebScraper.WebScraper ws = new Backend.WebScraper.WebScraper();
+            Task<List<NewsArticleItem>> resultCall = ws.ScrapeHoldNytNewsArticles("www.holdnyt.dk/nyheder/fodbold/danmark-superligaen/ob");
+            List<NewsArticleItem> result = await resultCall;
+
+            //Scrape news from holdnyt.dk
+            _1887.Backend.WebScraper.WebScraper wsLeagueTable = new Backend.WebScraper.WebScraper();
+            Task<List<LeagueTableItem>> resultCallLeagueTableItems = ws.ScrapeBoldLeagueTable("www.bold.dk/fodbold/danmark/superligaen", settingUseProperNames.Value);
+            List<LeagueTableItem> resultTableItems = await resultCallLeagueTableItems;
+
+            //Add to View Lists
+            AddNewsItemsToObservableCollection(result, settingNewsToShowList.Value);
+            AddMatchItemsToObservableCollection(resultMatchItems);
+            AddLeagueTableItemsToObservableCollection(resultTableItems);
+
 
             this.IsDataLoaded = true;
+
+            if (resultCall.IsCompleted && resultCallMatchItems.IsCompleted && resultCallLeagueTableItems.IsCompleted)
+            { 
+                this.IsLoadingData = false;
+            }
         }
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -84,5 +119,61 @@ namespace _1887.App.ViewModels
                 handler(this, new PropertyChangedEventArgs(propertyName));
             }
         }
+
+        //Add news items to list
+        private void AddNewsItemsToObservableCollection(List<NewsArticleItem> result, int shortListItems)
+        {
+            int counter = 1;
+            if (result != null && result.Count > 0)
+            {
+                this.NewsItems.Clear();
+                this.NewsItemsLongList.Clear();
+
+                foreach (NewsArticleItem item in result)
+                {
+                    if(counter <= shortListItems)
+                    { 
+                        this.NewsItems.Add(item);
+                    }
+                    
+                    counter++;
+
+                    this.NewsItemsLongList.Add(item);
+                }
+            }
+        }
+
+        private void AddMatchItemsToObservableCollection(List<MatchItem> result)
+        {
+            this.MatchItemsLongList.Clear();
+            this.MatchItems.Clear();
+            foreach (MatchItem item in result)
+            {
+                this.MatchItemsLongList.Add(item);
+            }
+
+            //Get Most Recent and Next Match
+            DateTime dt = DateTime.Now;
+            MatchItem recentMatch = result.Where(x => x.dateTime < dt).OrderByDescending(x => x.dateTime).FirstOrDefault();
+            MatchItem nextMatch = result.Where(x => x.dateTime > dt).OrderBy(x => x.dateTime).FirstOrDefault();
+            MatchItems.Add(recentMatch);
+            MatchItems.Add(nextMatch);
+        }
+
+        private void AddLeagueTableItemsToObservableCollection(List<LeagueTableItem> result)
+        {
+            if(result.Count > 0)
+            {
+                //Clear for refresh purposes
+                this.LeagueTableItems.Clear();
+
+                foreach(LeagueTableItem item in result)
+                {
+                    this.LeagueTableItems.Add(item);
+                }
+            }
+        }
+
+
     }
 }
